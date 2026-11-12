@@ -1,0 +1,414 @@
+/* OUES Campfire Opener
+   Palette: deep navy and near-black, cool white text, one warm accent (firelight orange).
+   The orange is used sparingly on the map steps so the campfire pays it off. */
+
+:root {
+  --night-0: #02040a;
+  --night-1: #060b18;
+  --ink: #f2f5fa;
+  --ink-soft: #dfe6f1;
+  --muted: #b9c5d9;
+  --fire: #ff8a3d;
+  --fire-pale: #ffe3c8;
+  --font: "Manrope", "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  color: var(--ink);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---------- Stage and layers ---------- */
+
+#stage {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #000;
+  user-select: none;
+  -webkit-user-select: none;
+  /* One design unit: 1px on a 1920x1080 frame. All type and spacing scale with it. */
+  --u: calc(min(100vw, 177.7778vh) / 1920);
+  --stars-ms: 1200ms;
+  --map-ms: 1200ms;
+  --fire-ms: 2000ms;
+  --haze: 0;
+}
+
+#stage.nocursor, #stage.nocursor * { cursor: none !important; }
+
+#starfield, #map-wrap, #glow, #campfire {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+}
+
+#starfield { z-index: 1; transition: opacity var(--stars-ms) ease; }
+#map-wrap  { z-index: 2; transition: opacity var(--map-ms) ease; }
+#glow      { z-index: 3; transition: opacity 1600ms ease-in-out; }
+#campfire  { z-index: 4; transition: opacity var(--fire-ms) ease-in-out; }
+
+#stage.show-stars #starfield { opacity: 1; }
+#stage.show-map #map-wrap { opacity: 1; }
+#stage.show-glow #glow { opacity: 1; }
+#stage.show-fire #campfire { opacity: 1; }
+
+#map { position: absolute; inset: 0; background: transparent; }
+#map .maplibregl-canvas { outline: none; }
+
+/* Edge vignette: cinematic, and keeps the corners quiet behind the text. */
+#map-tint {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 85% 85% at 50% 45%, rgba(3, 6, 16, 0) 42%, rgba(3, 6, 16, 0.62) 100%),
+    linear-gradient(rgba(10, 26, 66, 0.2), rgba(10, 26, 66, 0.2)); /* a cool night wash over the imagery */
+}
+
+/* Distance haze for the tilted close-ups. Strength follows the camera pitch (set from app.js). */
+#map-haze {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--haze);
+  background: linear-gradient(to bottom, rgba(6, 11, 26, 0.94) 0%, rgba(6, 11, 26, 0.6) 20%, rgba(6, 11, 26, 0) 52%);
+}
+
+/* Firelight on the map, centered where the fire will appear. */
+#glow {
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background:
+    radial-gradient(ellipse 8% 12% at 50% 63.5%, rgba(255, 226, 176, 0.8), rgba(255, 200, 130, 0.3) 45%, rgba(255, 190, 120, 0) 100%),
+    radial-gradient(ellipse 36% 46% at 50% 63.5%, rgba(255, 150, 70, 0.6), rgba(255, 130, 55, 0.24) 38%, rgba(255, 110, 40, 0.07) 70%, rgba(255, 110, 40, 0) 100%);
+}
+#stage.show-glow #glow { animation: glow-breathe 3.4s ease-in-out infinite; }
+@keyframes glow-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.035); }
+}
+
+/* ---------- The office pin ---------- */
+
+.pin {
+  width: 0;
+  height: 0;
+  opacity: 0;
+  transition: opacity 500ms ease;
+  pointer-events: none;
+}
+.pin.on { opacity: 1; }
+.pin-dot, .pin-ring, .pin-halo {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+.pin-dot {
+  width: calc(24 * var(--u));
+  height: calc(24 * var(--u));
+  min-width: 14px;
+  min-height: 14px;
+  background: #fff4e6;
+  border: calc(5 * var(--u)) solid var(--fire);
+  box-shadow: 0 0 calc(18 * var(--u)) rgba(255, 138, 61, 0.9), 0 0 calc(48 * var(--u)) rgba(255, 138, 61, 0.55);
+  transition: transform 700ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  transform: translate(-50%, calc(-50% - 60 * var(--u)));
+}
+.pin.on .pin-dot { transform: translate(-50%, -50%); }
+.pin-halo {
+  width: calc(170 * var(--u));
+  height: calc(170 * var(--u));
+  background: radial-gradient(circle, rgba(255, 138, 61, 0.34), rgba(255, 138, 61, 0) 70%);
+}
+.pin-ring {
+  width: calc(130 * var(--u));
+  height: calc(130 * var(--u));
+  border: calc(3 * var(--u)) solid rgba(255, 170, 110, 0.9);
+  opacity: 0;
+}
+/* A slow, soft pulse. Nothing fast: it has to survive Teams compression. */
+.pin.on .pin-ring { animation: pin-pulse 2.8s ease-out infinite; }
+.pin.on .pin-ring.late { animation-delay: 1.4s; }
+@keyframes pin-pulse {
+  0% { transform: translate(-50%, -50%) scale(0.25); opacity: 0; }
+  18% { opacity: 0.85; }
+  100% { transform: translate(-50%, -50%) scale(1.2); opacity: 0; }
+}
+
+/* ---------- Text: a 16:9 safe area, centered in whatever window we get ---------- */
+
+#safe {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 50%;
+  width: min(100vw, 177.7778vh);
+  height: min(100vh, 56.25vw);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+#panel {
+  position: absolute;
+  left: calc(72 * var(--u));
+  bottom: calc(60 * var(--u));
+  max-width: calc(1310 * var(--u));
+  padding: calc(34 * var(--u)) calc(44 * var(--u)) calc(34 * var(--u));
+  border-radius: calc(20 * var(--u));
+  background: rgba(4, 8, 18, 0.76);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 calc(24 * var(--u)) calc(80 * var(--u)) rgba(0, 0, 0, 0.5);
+  -webkit-backdrop-filter: blur(calc(16 * var(--u)));
+  backdrop-filter: blur(calc(16 * var(--u)));
+  opacity: 0;
+  transform: translateY(calc(14 * var(--u)));
+  transition: opacity 450ms ease, transform 450ms ease;
+  pointer-events: none;
+}
+#panel.visible {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+/* Each statement opens like a drawer (grid 0fr to 1fr) so the panel grows smoothly
+   while the new line fades and rises in. */
+.stmt {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  margin-top: 0;
+  transition: grid-template-rows 560ms cubic-bezier(0.22, 0.7, 0.2, 1), opacity 520ms ease, margin-top 560ms cubic-bezier(0.22, 0.7, 0.2, 1);
+}
+.stmt-clip { overflow: hidden; min-height: 0; }
+.stmt-body {
+  padding-bottom: calc(4 * var(--u));
+  transform: translateY(calc(12 * var(--u)));
+  transition: transform 560ms cubic-bezier(0.22, 0.7, 0.2, 1);
+}
+.stmt.shown { grid-template-rows: 1fr; opacity: 1; }
+.stmt.shown .stmt-body { transform: none; }
+.stmt.shown ~ .stmt.shown { margin-top: calc(24 * var(--u)); }
+/* Earlier lines stay up but step back a little. */
+.stmt.shown.past { opacity: 0.6; }
+
+.stmt-text {
+  margin: 0;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+.stmt.headline .stmt-text {
+  font-size: calc(46 * var(--u));
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  max-width: 26.4em;
+}
+.stmt.secondary .stmt-text {
+  font-size: calc(31 * var(--u));
+  line-height: 1.32;
+  font-weight: 500;
+  color: var(--ink-soft);
+  max-width: 34em;
+}
+/* The thesis: a touch larger and warmer than a secondary line. */
+.stmt.thesis .stmt-body {
+  padding-left: calc(24 * var(--u));
+  border-left: calc(5 * var(--u)) solid var(--fire);
+}
+.stmt.thesis .stmt-text {
+  font-size: calc(36 * var(--u));
+  line-height: 1.28;
+  font-weight: 700;
+  color: var(--fire-pale);
+  max-width: 29em;
+}
+
+.source {
+  display: inline-block;
+  margin-top: calc(10 * var(--u));
+  font-size: max(12px, calc(16 * var(--u)));
+  line-height: 1.35;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(185, 197, 217, 0.28);
+  cursor: pointer;
+}
+.source:hover, .source:focus-visible {
+  color: #fff;
+  border-bottom-color: rgba(255, 255, 255, 0.8);
+  outline: none;
+}
+
+/* "Pull up a chair." */
+#title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  margin: 0;
+  text-align: center;
+  font-size: calc(92 * var(--u));
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: #fff6ea;
+  text-shadow: 0 0 calc(50 * var(--u)) rgba(255, 138, 61, 0.38), 0 calc(3 * var(--u)) calc(18 * var(--u)) rgba(0, 0, 0, 0.7);
+  opacity: 0;
+  transform: translateY(calc(-50% + 16 * var(--u)));
+  transition: opacity 1400ms ease, transform 1400ms ease;
+}
+#title.at-fire { top: 27%; }
+#title.on { opacity: 1; transform: translateY(-50%); }
+
+/* ---------- Overlays ---------- */
+
+#attribution {
+  position: absolute;
+  right: calc(22 * var(--u));
+  bottom: calc(14 * var(--u));
+  max-width: 46%;
+  text-align: right;
+  font-size: max(10px, calc(13 * var(--u)));
+  line-height: 1.35;
+  color: rgba(200, 211, 229, 0.72);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 8px rgba(0, 0, 0, 0.8);
+  opacity: 0;
+  transition: opacity var(--map-ms) ease;
+  pointer-events: none;
+}
+#stage.show-map #attribution { opacity: 1; }
+/* While the campfire fades in over the map, the attribution leaves with the map. */
+#stage.show-fire #attribution { opacity: 0; transition-duration: var(--fire-ms); }
+
+#preparing {
+  position: absolute;
+  right: calc(24 * var(--u));
+  bottom: calc(18 * var(--u));
+  font-size: max(11px, calc(14 * var(--u)));
+  letter-spacing: 0.04em;
+  color: rgba(185, 197, 217, 0.5);
+  opacity: 0;
+  transition: opacity 800ms ease;
+  pointer-events: none;
+}
+#preparing.on { opacity: 1; }
+
+#toast {
+  position: absolute;
+  z-index: 7;
+  left: 50%;
+  bottom: calc(22 * var(--u));
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  background: rgba(4, 8, 18, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  opacity: 0;
+  transition: opacity 400ms ease;
+  pointer-events: none;
+}
+#toast.on { opacity: 1; }
+
+/* Presenter notes: small, in a corner, safe to leave open on the presenter's own screen. */
+#notes {
+  position: absolute;
+  z-index: 10;
+  top: 14px;
+  right: 14px;
+  width: min(340px, 44vw);
+  padding: 12px 14px 11px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  background: rgba(5, 9, 19, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.5);
+  cursor: default;
+}
+#notes[hidden] { display: none; }
+#notes-where { font-weight: 700; color: #fff; }
+#notes-text { margin: 6px 0 8px; font-size: 14px; }
+#notes-next { color: var(--muted); }
+#notes-status { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--muted); }
+#notes-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #6f7d95;
+}
+#notes-dot[data-state="running"] { background: #e2b04a; animation: dot-wait 1.8s ease-in-out infinite; }
+#notes-dot[data-state="ready"] { background: #56c271; box-shadow: 0 0 8px rgba(86, 194, 113, 0.7); }
+#notes-dot[data-state="partial"], #notes-dot[data-state="interrupted"] { background: #e2b04a; }
+#notes-dot[data-state="failed"] { background: #e0604f; }
+@keyframes dot-wait { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+#notes-flags { margin: 6px 0 0; padding: 0; list-style: none; color: #f0c27a; }
+#notes-flags:empty { display: none; }
+#notes-flags li { margin-top: 2px; }
+#notes-keys {
+  margin-top: 9px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgba(185, 197, 217, 0.72);
+}
+
+/* ---------- Fast-forward: a click during a move jumps to its end state ---------- */
+
+#stage.fast #starfield, #stage.fast #map-wrap, #stage.fast #glow, #stage.fast #campfire,
+#stage.fast #attribution, #stage.fast #panel, #stage.fast .stmt, #stage.fast .stmt-body,
+#stage.fast #title, #stage.fast .pin, #stage.fast .pin-dot {
+  transition-duration: 140ms !important;
+}
+
+/* ---------- Reduced motion ---------- */
+
+#stage.reduced .stmt, #stage.reduced .stmt-body { transition-duration: 300ms; }
+#stage.reduced .stmt-body, #stage.reduced #panel { transform: none; }
+#stage.reduced #title { transform: translateY(-50%); }
+#stage.reduced.show-glow #glow { animation: none; }
+#stage.reduced .pin.on .pin-ring { animation: none; opacity: 0.5; transform: translate(-50%, -50%) scale(0.8); }
+#stage.reduced .pin-dot { transition: none; transform: translate(-50%, -50%); }
+
+/* ---------- If the scripts never start ---------- */
+/* app.js adds .started to <html> as its first act. If that has not happened after a few seconds,
+   say so instead of leaving a silent black screen. */
+#boot-note {
+  position: fixed;
+  z-index: 20;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  max-width: 80vw;
+  text-align: center;
+  font-size: 18px;
+  line-height: 1.5;
+  color: var(--muted);
+  opacity: 0;
+  animation: boot-note-in 600ms ease 4s forwards;
+  pointer-events: none;
+}
+html.started #boot-note { display: none; }
+@keyframes boot-note-in { to { opacity: 1; } }

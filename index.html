@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OUES Campfire Opener</title>
+  <meta name="robots" content="noindex">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <!-- MapLibre GL JS, pinned. v5 is the last line with a plain script build (see README). -->
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css">
+  <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main id="stage" class="show-stars" aria-label="OUES campfire opener">
+    <!-- 1. Starfield: walk-in idle, and the sky behind the globe on the way down -->
+    <canvas id="starfield" aria-hidden="true"></canvas>
+
+    <!-- 2. Map: steps 1 to 5 -->
+    <div id="map-wrap" aria-hidden="true">
+      <div id="map"></div>
+      <div id="map-haze"></div>
+      <div id="map-tint"></div>
+    </div>
+
+    <!-- Firelight that rises on the map just before the campfire appears -->
+    <div id="glow" aria-hidden="true"></div>
+
+    <!-- 3. Campfire: end of step 5, held at step 6 -->
+    <canvas id="campfire" aria-hidden="true"></canvas>
+
+    <!-- 4. Text, kept inside a 16:9 safe area -->
+    <div id="safe">
+      <p id="title"></p>
+      <section id="panel" aria-live="polite"></section>
+      <!-- Map credits and the preload note sit in the corner of the safe area too -->
+      <div id="attribution"></div>
+      <div id="preparing" role="status">Preparing&hellip;</div>
+    </div>
+
+    <!-- 5. Overlays -->
+    <div id="toast" role="status"></div>
+
+    <aside id="notes" hidden aria-label="Presenter notes">
+      <div id="notes-where"></div>
+      <p id="notes-text"></p>
+      <div id="notes-next"></div>
+      <div id="notes-status"><span id="notes-dot"></span><span id="notes-status-text"></span></div>
+      <ul id="notes-flags"></ul>
+      <div id="notes-keys">Next: &rarr; Space PgDn click &middot; Back: &larr; PgUp &middot; R reset &middot; F full screen &middot; N notes &middot; T title &middot; S sound &middot; 0 to 6 jump</div>
+    </aside>
+  </main>
+
+  <!-- Shown only if the scripts below fail to start (see styles.css) -->
+  <p id="boot-note">The opener did not start. Check the internet connection, then reload the page.</p>
+
+  <!-- Plain scripts, in order. No modules, so double-clicking index.html works too. -->
+  <script src="content.js"></script>
+  <script src="oklahoma.js"></script>
+  <script src="map.js"></script>
+  <script src="starfield.js"></script>
+  <script src="campfire.js"></script>
+  <script src="fire-audio.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
