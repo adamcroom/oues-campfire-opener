@@ -34,6 +34,12 @@ function createStarfield(canvas, options = {}) {
   const ctx = canvas.getContext("2d", { alpha: false });
   let reduced = !!options.reducedMotion;
   const allowMeteors = options.shootingStars !== false;
+  // Seconds between shooting stars, picked at random between the two numbers each time.
+  const gap = Array.isArray(options.shootingStarEvery) && options.shootingStarEvery.length === 2
+    ? options.shootingStarEvery.map(Number) : [90, 120];
+  const gapMin = Math.max(5, Math.min(gap[0], gap[1]) || 90);
+  const gapMax = Math.max(gapMin, Math.max(gap[0], gap[1]) || 120);
+  const nextGap = () => gapMin + Math.random() * (gapMax - gapMin);
 
   let W = 0, H = 0, scale = 1, u = 1;
   let RW = 0, RH = 0;   // size of the tilted rectangle that covers the screen
@@ -44,7 +50,7 @@ function createStarfield(canvas, options = {}) {
   let backdrop = null, glowSprite = null, dotSprites = null;
 
   let running = false, raf = 0, last = 0, time = 0, lastDraw = 0;
-  const meteor = { active: false, next: 70, x: 0, y: 0, dx: 0, dy: 0, age: 0, life: 1 };
+  const meteor = { active: false, next: nextGap(), x: 0, y: 0, dx: 0, dy: 0, age: 0, life: 1 };
 
   function buildSprites() {
     const size = 64;
@@ -311,9 +317,9 @@ function createStarfield(canvas, options = {}) {
     if (!allowMeteors || reduced) { meteor.active = false; return; }
     if (meteor.active) {
       meteor.age += dt;
-      if (meteor.age >= meteor.life) { meteor.active = false; meteor.next = time + 110 + Math.random() * 150; }
+      if (meteor.age >= meteor.life) { meteor.active = false; meteor.next = time + nextGap(); }
     } else if (time >= meteor.next) {
-      // One faint streak every few minutes. Never more than one at a time.
+      // One faint streak per gap (see shootingStarEvery). Never more than one at a time.
       const angle = 0.5 + Math.random() * 0.5;
       const length = (420 + Math.random() * 260) * u;
       meteor.active = true;

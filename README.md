@@ -155,7 +155,7 @@ Off by default. **S** turns on a fire crackle that is synthesized in the browser
 - **Steps 5 and 6.** One click plays all of Step 5. "Pull up a chair." then holds for seven seconds (`timing.titleHold`) and fades, which is the move to Step 6. A click during the hold fades it straight away.
 - **First statement.** The first line of each step appears on its own once the camera settles; later lines need a click.
 - **Oklahoma framing.** Zoom is 5.9 rather than 6.2 so the whole state stays clear of the text panel when all three statements are up.
-- **Shooting stars.** One faint streak every two to four minutes on the walk-in starfield. Set `campfire.shootingStars` to `false` to turn them off.
+- **Shooting stars.** One faint streak every 90 to 120 seconds on the walk-in starfield. `campfire.shootingStarEvery` in `content.js` sets the wait (shortest and longest, in seconds); set `campfire.shootingStars` to `false` to turn them off.
 - **Font.** Manrope, from Google Fonts.
 
 ## Files

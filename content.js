@@ -38,7 +38,8 @@ const CONTENT = {
 
   campfire: {
     embers: 34,              // lower this if the fire looks choppy over Teams
-    shootingStars: true,     // one faint shooting star every few minutes on the walk-in starfield
+    shootingStars: true,     // faint shooting stars on the walk-in starfield (false turns them off)
+    shootingStarEvery: [90, 120], // seconds between them: a random wait between these two numbers
   },
 
   attribution: {

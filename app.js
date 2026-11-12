@@ -37,7 +37,7 @@ const pinEl = document.createElement("div");
 pinEl.className = "pin";
 pinEl.innerHTML = '<span class="pin-halo"></span><span class="pin-ring"></span><span class="pin-ring late"></span><span class="pin-dot"></span>';
 
-const starfield = createStarfield($("starfield"), { reducedMotion: reduced, shootingStars: CONTENT.campfire?.shootingStars });
+const starfield = createStarfield($("starfield"), { reducedMotion: reduced, shootingStars: CONTENT.campfire?.shootingStars, shootingStarEvery: CONTENT.campfire?.shootingStarEvery });
 const campfire = createCampfire($("campfire"), { reducedMotion: reduced, embers: CONTENT.campfire?.embers });
 const audio = createFireAudio();
 
